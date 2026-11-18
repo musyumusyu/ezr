@@ -1320,15 +1320,15 @@ $('fJ').onchange=async e=>{const f=e.target.files[0];if(!f)return;
 $('exCopy').onclick=async()=>{try{await navigator.clipboard.writeText(toJSON());msg('コピーしました')}catch(e){$('ex').select();try{document.execCommand('copy');msg('コピーしました')}catch(x){msg('テキストを選択してコピーしてください')}}};
 $('exSave').onclick=async()=>{
   const name=((C.title||'chart').replace(/[\\/:*?"<>|]/g,'_'))+'.json',data=toJSON();
+  const ios=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
   try{if(window.claude&&window.claude.use){const d=await window.claude.use('downloads');if(d){await d.save({filename:name,data});return}}}catch(e){} // Claudeのアーティファクト内だけで使える保存
-  try{ // スマホ: 共有メニューから「ファイルに保存」(ホーム画面アプリでも動く)
-    const f=new File([data],name,{type:'application/json'});
-    if(matchMedia('(pointer:coarse)').matches&&navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:name});msg('保存/共有しました');return}
-  }catch(e){if(e&&e.name==='AbortError')return}
-  if(matchMedia('(display-mode: standalone)').matches&&matchMedia('(pointer:coarse)').matches){ // ホーム画面アプリでは、共有できないとダウンロードも効かないことがある → クリップボードへ
-    try{await navigator.clipboard.writeText(data);msg('ファイルにできなかったので、コピーしました。メモ等に貼って保存してください');return}catch(e){}
+  if(ios){ // iPhone/iPad: 共有メニューから「ファイルに保存」。だめならクリップボードへ
+    try{const f=new File([data],name,{type:'application/json'});
+      if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:name});msg('保存/共有しました');return}
+    }catch(e){if(e&&e.name==='AbortError')return}
+    if(matchMedia('(display-mode: standalone)').matches){try{await navigator.clipboard.writeText(data);msg('ファイルにできなかったので、コピーしました。メモ等に貼って保存してください');return}catch(e){}}
   }
-  try{ // パソコン: ふつうのダウンロード
+  try{ // Android・パソコン: ふつうのダウンロード(Androidでは「ダウンロード」フォルダに入る)
     const u=URL.createObjectURL(new Blob([data],{type:'application/json'})),a=document.createElement('a');
     a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);msg('ダウンロードしました: '+name);
   }catch(e){msg('頑張ってみたけど保存できなかった、、コピーを使ってください')}
