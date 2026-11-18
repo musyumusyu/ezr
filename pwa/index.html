@@ -1319,9 +1319,16 @@ $('fJ').onchange=async e=>{const f=e.target.files[0];if(!f)return;
   try{const o=JSON.parse(await f.text());mod(()=>{C=fix(o);ps=[];sel=null;ms=[];draft=null});sb=-1;msg('譜面を読み込みました')}catch(x){msg('読み込めません: '+x.message)}e.target.value=''};
 $('exCopy').onclick=async()=>{try{await navigator.clipboard.writeText(toJSON());msg('コピーしました')}catch(e){$('ex').select();try{document.execCommand('copy');msg('コピーしました')}catch(x){msg('テキストを選択してコピーしてください')}}};
 $('exSave').onclick=async()=>{
-  try{const d=await window.claude.use('downloads');if(!d){msg('この環境では保存できません。コピーを使ってください');return}
-    await d.save({filename:((C.title||'chart').replace(/[\\/:*?"<>|]/g,'_'))+'.json',data:toJSON()})}
-  catch(e){msg('頑張ってみたけど保存できなかった、、')}
+  const name=((C.title||'chart').replace(/[\\/:*?"<>|]/g,'_'))+'.json',data=toJSON();
+  try{if(window.claude&&window.claude.use){const d=await window.claude.use('downloads');if(d){await d.save({filename:name,data});return}}}catch(e){} // Claudeのアーティファクト内だけで使える保存
+  try{ // スマホ: 共有メニューから「ファイルに保存」(ホーム画面アプリでも動く)
+    const f=new File([data],name,{type:'application/json'});
+    if(matchMedia('(pointer:coarse)').matches&&navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:name});msg('保存/共有しました');return}
+  }catch(e){if(e&&e.name==='AbortError')return}
+  try{ // パソコン: ふつうのダウンロード
+    const u=URL.createObjectURL(new Blob([data],{type:'application/json'})),a=document.createElement('a');
+    a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);msg('ダウンロードしました: '+name);
+  }catch(e){msg('頑張ってみたけど保存できなかった、、コピーを使ってください')}
 };
 addEventListener('resize',()=>{fit();draw()});
 try{const v=parseFloat(localStorage.getItem('chart-editor-vol'));if(v>=0&&v<=1)$('vol').value=v}catch(e){}
