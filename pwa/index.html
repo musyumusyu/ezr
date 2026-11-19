@@ -1013,6 +1013,39 @@ cv.addEventListener('dblclick',e=>{
   if(hit(x,y)||pointAt(x,y)||hitMarker(x,y))return;
   const c=cell(x,y);seek(c.beat);msg('開始位置: '+R6(c.beat)+'拍');
 });
+// ===== ピンチ(2本指)で拡大縮小: Ctrl+ホイールと同じ。指の間の拍が動かないように拡大し、2本指を上下に動かすとスクロールもできる =====
+const TP=new Map();let pinch=null,pinchLock=false,pd0=null;
+const pnDist=()=>{const [a,b]=[...TP.values()];return Math.hypot(a.x-b.x,a.y-b.y)},pnMid=()=>{const [a,b]=[...TP.values()];return [(a.x+b.x)/2,(a.y+b.y)/2]};
+function pnStart(){const [,my]=pnMid(),r=cv.getBoundingClientRect();geo();pinch={d0:Math.max(10,pnDist()),ppb0:ppb,b0:bY(my-r.top)}}
+addEventListener('pointerdown',e=>{
+  if(e.pointerType!=='touch'||e.target!==cv||playing)return;
+  TP.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(TP.size===1){pd0={h:hist.length,draft,dl:draft?draft.points.length:0};return} // 1本目を押した時点の状態を覚えておく
+  e.stopPropagation(); // 2本目以降は、ふつうの操作(置く・選ぶ・動かす)として扱わない
+  if(!pinchLock){ // 1本目で起きた操作(置いた・動かした)は取り消す
+    if(pd0){for(let k=hist.length-pd0.h;k>0;k--)undo();if(draft&&draft===pd0.draft&&draft.points.length>pd0.dl){draft.points.length=pd0.dl;afterEdit()}}
+    drag=null;mq=null;pinchLock=true;draw();
+  }
+  if(TP.size===2)pnStart();
+},true);
+addEventListener('pointermove',e=>{
+  if(e.pointerType!=='touch'||!TP.has(e.pointerId))return;
+  TP.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(!pinchLock)return;
+  e.stopPropagation();
+  if(pinch&&TP.size===2){const [,my]=pnMid(),r=cv.getBoundingClientRect();geo();
+    ppb=Math.max(ZMIN,Math.min(ZMAX,pinch.ppb0*pnDist()/pinch.d0));
+    sb=Math.max(-4,pinch.b0-(G.jy-(my-r.top))/ppb);
+    zmSync();draw()}
+},true);
+const pnEnd=e=>{
+  if(e.pointerType!=='touch'||!TP.has(e.pointerId))return;
+  TP.delete(e.pointerId);
+  if(!pinchLock)return;
+  e.stopPropagation();if(TP.size<2)pinch=null;if(!TP.size)pinchLock=false;
+};
+addEventListener('pointerup',pnEnd,true);addEventListener('pointercancel',pnEnd,true);
+addEventListener('blur',()=>{TP.clear();pinch=null;pinchLock=false});
 cv.addEventListener('wheel',e=>{
   e.preventDefault();if(playing)return;
   if(e.ctrlKey){const y=pos(e)[1];geo();const b=bY(y);ppb=Math.max(ZMIN,Math.min(ZMAX,ppb*(e.deltaY<0?1.15:1/1.15)));sb+=b-bY(y)}
@@ -1044,7 +1077,7 @@ function toolIcon(k){ // 譜面と同じ描画で、実物に近い横長の比�
       const col=k==='slide'?GC.slide:GC.guide;
       g.beginPath();g.moveTo(4,32);g.bezierCurveTo(4,20,16,20,16,8);g.lineTo(52,8);g.bezierCurveTo(52,20,40,20,40,32);g.closePath();
       g.globalAlpha=k==='slide'?.6:.35;g.fillStyle=k==='slide'?NV.band:col;g.fill();g.globalAlpha=1;
-      if(k==='slide'){glyph('tap',2,32,40,col,0,false);glyph('tap',14,8,40,col,0,false)}
+      if(k==='slide'){const sp=(cx,y)=>pill(cx-20.25,y,40.5,col,12);sp(22,32);sp(34,8)} // 始点/終点: 縦を15→12に圧縮、横を約8%伸ばす(帯は据え置き)
       else{g.strokeStyle=col;g.lineWidth=1.5;g.setLineDash([3,2]);g.stroke();g.setLineDash([])}
     }
     else if(k==='curve'){g.strokeStyle=GC.slide;g.lineWidth=5;g.globalAlpha=.6;g.lineCap='round';g.beginPath();g.moveTo(8,34);g.bezierCurveTo(8,10,48,30,48,6);g.stroke();g.globalAlpha=1;g.lineCap='butt';for(const [px,py] of [[8,34],[48,6]]){g.fillStyle='#fff';g.strokeStyle='#ff5fa8';g.lineWidth=2;g.fillRect(px-5,py-5,10,10);g.strokeRect(px-5,py-5,10,10)}}
@@ -1176,6 +1209,31 @@ function evForm(b){
 }
 const NMT={tap:'タップ',flick:'フリック',trace:'トレース',damage:'ダメージ',hold:'デフォルト',none:'なし'};
 const CVO=[['','継承'],['linear','直線'],['in','加速'],['out','減速'],['smooth','なめらか']];
+// ===== スライド造形: 選んだ点→次の点の間に、ギザギザ/カーブ/逆カーブを作る =====
+function shapeSeg(n,p,kind){
+  const a=n.points,i=a.indexOf(p),q=a[i+1];if(i<0||!q)return;
+  const b0=p.beat,b1=q.beat,w=p.width||1,mx=C.lanes-w,cl=v=>Math.max(0,Math.min(mx,v));
+  if(kind==='zig'){ // 今の分割数ごとに、今のレーンと もう1つのレーンを行き来(最後の点は次の点に重ならない手前まで)
+    const step=4/snapN,L1=cl(p.lane);let L2;
+    if(q.lane!==p.lane)L2=cl(q.lane);                       // 始点と次の点のレーンが違う → その2つのレーンの間でギザギザ
+    else L2=p.lane+1<=mx?p.lane+1:p.lane-1;                 // 同じ → 1つ隣のレーン(右が空いていれば右、だめなら左)
+    if(L2<0||L2===L1){msg('ギザギザにできるレーンがありません');return}
+    const add=[];let k=Math.floor(b0/step+1e-9)+1;
+    for(;R6(k*step)<b1-1e-9;k++){
+      if(add.length>=600){msg('分割が細かすぎて点が多すぎます(最大600点)。分割数を下げてください');return}
+      const pt={beat:R6(k*step),lane:add.length%2===0?L2:L1,curve:'linear'};if(w>1)pt.width=w;add.push(pt)}
+    if(!add.length){msg('点を置ける隙間がありません(分割数を上げてください)');return}
+    mod(()=>{p.curve='linear';a.splice(i+1,0,...add)});msg('ギザギザ: '+add.length+'点を追加しました');return;
+  }
+  // カーブ=真ん中まで減速→そこから加速 / 逆カーブ=真ん中まで加速→そこから減速。真ん中は13440分割の格子で「ほぼ中央」
+  if(p.lane===q.lane){msg('次の点とレーンが同じなので、カーブになりません');return}
+  const mb=R6(Math.round((b0+b1)/2*3360)/3360);
+  if(!(mb>b0+1e-9&&mb<b1-1e-9)){msg('点の間が短すぎます');return}
+  const m={beat:mb,lane:R6((p.lane+q.lane)/2)};if(w>1)m.width=w;
+  const c1=kind==='curve'?'out':'in',c2=kind==='curve'?'in':'out';
+  mod(()=>{p.curve=c1;m.curve=c2;a.splice(i+1,0,m)});
+  msg((kind==='curve'?'カーブ':'逆カーブ')+'にしました(中央の点: 拍'+mb+' レーン'+m.lane+')');
+}
 function pointForm(b){
   const row=(...k)=>{const r=mk('div',{className:'r'});r.append(...k);b.append(r)};
   ps=ps.filter(z=>z.n.points.includes(z.p));const L=ps;
@@ -1195,7 +1253,8 @@ function pointForm(b){
         if(v<1||p.lane+v>C.lanes){msg('範囲外です');panels();return}mod(()=>{if(v>1)p.width=v;else delete p.width})};
       return [lab(l),inp]};
     row(...pn('拍','beat'),...pn('レーン','lane'),...pn('幅','width'));
-    if(!last)row(...slO(p,'次までの曲線','curve',CVO));
+    if(!last){row(...slO(p,'次までの曲線','curve',CVO));
+      row(lab('次の点まで'),mk('button',{textContent:'ギザギザ',onclick:()=>shapeSeg(n,p,'zig')}),mk('button',{textContent:'カーブ',onclick:()=>shapeSeg(n,p,'curve')}),mk('button',{textContent:'逆カーブ',onclick:()=>shapeSeg(n,p,'rcurve')}))}
     row(...setCol(p,'color'));
     if(!first&&!last)row(...chkO(p,'中継点にする','relay'));
     if(first){row(...slO(n,'始点','head',[['','既定: '+NMT[n.type==='guide'?'none':'tap']],...['tap','flick','trace','damage','none'].map(v=>[v,NMT[v]])]));row(...chkO(n,'始点CRIT','headCrit'));row(...setCol(n,'headColor'))}
