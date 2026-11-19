@@ -692,11 +692,12 @@ function convertNotes(L,X,h){ // フリック/トレースツールでクリッ�
   if(!L.length)return;const to=h.type===X?'tap':X;
   mod(()=>L.forEach(n=>{n.type=to}));msg(L.length+'個を'+TN[to]+'にしました');
 }
-function setEnd(n,x,y){ // ノーツを持った状態でスライドの始点/終点をクリック → その種類に設定
+function setEnd(n,x,y,dry){ // ノーツを持った状態でスライドの始点/終点をクリック → その種類に設定(dry=trueは判定だけ)
   const part=endGlyphAt(n,x,y);if(!part)return false;
   const type=CRIT_T[tool]||tool,fc=!!CRIT_T[tool]||crit,k=part==='head'?'head':'tail',kc=k+'Crit',cur=part==='head'?hdef(n):tdef(n);
-  if(cur===type&&!CRIT_T[tool]&&!crit&&(type==='flick'||type==='trace')&&n[k]!==undefined){mod(()=>{delete n[k];sel=n;ms=[n];ps=[];selEv=null;evs=[]});msg((part==='head'?'始点':'終点')+'の'+TN[type]+'を解除しました');return true}
+  if(cur===type&&!CRIT_T[tool]&&!crit&&(type==='flick'||type==='trace')&&n[k]!==undefined){if(dry)return true;mod(()=>{delete n[k];sel=n;ms=[n];ps=[];selEv=null;evs=[]});msg((part==='head'?'始点':'終点')+'の'+TN[type]+'を解除しました');return true}
   if(cur===type&&(!fc||type==='damage'||(n[kc]??n.crit)))return false; // 既に同じ → 通常の選択・移動へ
+  if(dry)return true;
   mod(()=>{n[k]=type;if(fc&&type!=='damage')n[kc]=true;sel=n;ms=[n];ps=[];selEv=null;evs=[]});
   msg((part==='head'?'始点':'終点')+'を'+TN[type]+(fc&&type!=='damage'?'(CRIT)':'')+'にしました');return true;
 }
@@ -755,10 +756,22 @@ function flipNotes(list,mode){
   mod(()=>list.forEach((n,i)=>{Object.keys(n).forEach(k=>delete n[k]);Object.assign(n,cl[i])}));
   msg(mode==='h'?'左右反転しました':'上下反転しました');
 }
+let draftOrig=null; // スライドの始点に変えたノーツ。点が増えないまま終わったら元のノーツに戻す
 function finishDraft(){
-  if(!draft)return;const n=draft;draft=null;
-  if(n.points.length<2){const i=C.notes.indexOf(n);if(i>=0)C.notes.splice(i,1);if(sel===n)sel=null}
+  if(!draft)return;const n=draft,dO=draftOrig;draft=null;draftOrig=null;
+  if(n.points.length<2){const i=C.notes.indexOf(n);if(i>=0){if(dO&&dO.n===n)C.notes[i]=dO.o;else C.notes.splice(i,1)}if(sel===n)sel=null;ms=ms.filter(z=>z!==n)}
   afterEdit();
+}
+function toSlideStart(h){ // スライドツールで置いてあるノーツをタップ → そのノーツがスライドの始点になる(見た目・CRIT・レイヤーは引き継ぐ)
+  const i=C.notes.indexOf(h);if(i<0)return;
+  mod(()=>{
+    const p={beat:h.beat,lane:h.lane};if(h.width>1)p.width=h.width;
+    const n={type:'slide',points:[p]};
+    if(h.type!=='tap')n.head=h.type;
+    if(h.crit)n.crit=true;if(h.color)n.headColor=h.color;if(h.layer)n.layer=h.layer;
+    C.notes[i]=n;draftOrig={n,o:h};sel=n;ms=[n];ps=[];selEv=null;evs=[];draft=n;
+  });
+  msg('スライドの始点にしました。次の点をクリック、Enterで確定(点を足さずに確定すると元のノーツに戻ります)');
 }
 let lastRC=0;
 function rightClick(e){
@@ -912,15 +925,16 @@ cv.addEventListener('pointerdown',e=>{
   const h=(!['relay','bpm','meter','scroll'].includes(tool)||e.shiftKey)?hit(x,y,noBand&&!e.shiftKey):null;
   if(h){
     if(e.shiftKey){ms=ms.includes(h)?ms.filter(n=>n!==h):[...ms,h];sel=ms.length===1?ms[0]:null;panels();draw();return}
-    if(isPts(h)&&NOTE_T.includes(CRIT_T[tool]||tool)&&setEnd(h,x,y))return;
-    if(CRIT_T[tool]){const L=ms.includes(h)?ms.slice():[h];ms=L;sel=L.length===1?L[0]:null;selEv=null;evs=[];
+    const seP=isPts(h)&&NOTE_T.includes(CRIT_T[tool]||tool)&&setEnd(h,x,y,true)?{n:h,x,y}:null; // 始点/終点の付け外し: 押した瞬間ではなく、動かさずに離したときに実行(ドラッグ=移動)
+    if(CRIT_T[tool]&&!seP){const L=ms.includes(h)?ms.slice():[h];ms=L;sel=L.length===1?L[0]:null;selEv=null;evs=[];
       drag={t:'move',list:L,b0:c.beat,l0:c.lane,db:0,dl:0,snap:JSON.stringify(C),was:false,conv:null,tcrit:h,sx:x,sy:y,moved:false};panels();draw();return} // 動かさずに離したらCRIT切替
     const cvT=(tool==='flick'||tool==='trace')&&!isPts(h)&&NOTE_T.includes(h.type)?tool:null; // フリック/トレースツール: クリックで変換/解除(ドラッグなら移動)
     const tendP=(tool==='slide'||tool==='guide')&&isPts(h)?endGlyphAt(h,x,y):null; // スライド/ガイドツール: 始点・終点をクリック=ノーツなし⇄通常、ドラッグ=移動
-    const was=ms.includes(h)&&!draft&&!cvT&&!tendP; // 選択済みのノーツをクリック → 動かさなければ編集パネル
+    const tos=tool==='slide'&&!draft&&!isPts(h)&&NOTE_T.includes(h.type)?{h}:null; // スライドツール: 置いてあるノーツをタップ=スライドの始点に変換(ドラッグ=移動)
+    const was=ms.includes(h)&&!draft&&!cvT&&!tendP&&!tos&&!seP; // 選択済みのノーツをクリック → 動かさなければ編集パネル
     if(!ms.includes(h))ms=[h];
     sel=ms.length===1?ms[0]:null;selEv=null;evs=[];
-    drag={t:'move',list:ms,b0:c.beat,l0:c.lane,db:0,dl:0,snap:JSON.stringify(C),was,conv:cvT?{type:cvT,h}:null,tend:tendP?{n:h,part:tendP}:null,sx:x,sy:y,moved:false};panels();draw();return;
+    drag={t:'move',list:ms,b0:c.beat,l0:c.lane,db:0,dl:0,snap:JSON.stringify(C),was,conv:cvT?{type:cvT,h}:null,tend:tendP?{n:h,part:tendP}:null,sete:seP,tos,sx:x,sy:y,moved:false};panels();draw();return;
   }
   if(tool==='select'||tool==='point'||e.shiftKey){mq={x0:x,y0:y,b0:bY(y),x,y,add:e.shiftKey,pts:tool==='point'||e.altKey,pref:sel&&isPts(sel)&&ms.length===1?sel:null};if(!e.shiftKey){sel=null;ms=[];ps=[]}selEv=null;evs=[];panels();draw();return}
   if(!c.inside)return;
@@ -990,7 +1004,7 @@ addEventListener('pointerup',e=>{
     if(r.addAt&&!(x1-x0>4||y1-y0>4)){addPoint(r.addAt.n,r.addAt.c);return}
     panels();draw();return;
   }
-  if(drag){const d=drag;drag=null;if(d.t==='move'&&d.tend&&!d.moved&&!d.pushed){toggleEnd(d.tend.n,d.tend.part);return}if(d.t==='move'&&d.tcrit&&!d.moved&&!d.pushed){const L=d.list,on=!d.tcrit.crit;mod(()=>L.forEach(n=>{if(on)n.crit=true;else delete n.crit}));return}if(d.t==='move'&&d.conv&&!d.moved&&!d.pushed){convertNotes(d.list.filter(n=>!isPts(n)&&NOTE_T.includes(n.type)),d.conv.type,d.conv.h);return}if(d.t==='move'&&d.was&&!d.moved&&!d.pushed){const [px,py]=pos(e);openCtx(px,py);return}if(d.t==='ev'&&!d.pushed){openEvEdit(d.m);return}if(d.pushed)afterEdit()}
+  if(drag){const d=drag;drag=null;if(d.t==='move'&&d.sete&&!d.moved&&!d.pushed){setEnd(d.sete.n,d.sete.x,d.sete.y);return}if(d.t==='move'&&d.tos&&!d.moved&&!d.pushed){toSlideStart(d.tos.h);return}if(d.t==='move'&&d.tend&&!d.moved&&!d.pushed){toggleEnd(d.tend.n,d.tend.part);return}if(d.t==='move'&&d.tcrit&&!d.moved&&!d.pushed){const L=d.list,on=!d.tcrit.crit;mod(()=>L.forEach(n=>{if(on)n.crit=true;else delete n.crit}));return}if(d.t==='move'&&d.conv&&!d.moved&&!d.pushed){convertNotes(d.list.filter(n=>!isPts(n)&&NOTE_T.includes(n.type)),d.conv.type,d.conv.h);return}if(d.t==='move'&&d.was&&!d.moved&&!d.pushed){const [px,py]=pos(e);openCtx(px,py);return}if(d.t==='ev'&&!d.pushed){openEvEdit(d.m);return}if(d.pushed)afterEdit()}
 });
 cv.addEventListener('dblclick',e=>{
   if(draft){finishDraft();return}
