@@ -298,13 +298,31 @@ function pvFn(name){ // その速度で「位置(距離)」を積分した関数
   const ts=[...bp].sort((x,y)=>x-y),segs=[],cum=[0];
   ts.forEach((t0,i)=>{const pa=pvPiece(A,t0),pb=pvPiece(B,t0);segs.push({t0,a0:pa.v,as:pa.s,b0:pb.v,bs:pb.s});
     if(i+1<ts.length){const d=ts[i+1]-t0;cum.push(cum[i]+pvInt(segs[i],d))}});
-  return PV.fn[name]={ts,segs,cum,sp,v0:1}; // v0: 0秒より前(曲頭の助走)は常に×1
+  // bk(tA,tB): 時刻tA〜tBの間で「位置が折れる/向きが変わる/曲がる」点の時刻。帯や軌跡を細かく刻むため、描く側が使う
+  const bk=(tA,tB)=>{
+    const out=[];let lo=0,hi=ts.length-1;
+    while(lo<hi){const m=(lo+hi+1)>>1;if(ts[m]<=tA)lo=m;else hi=m-1}
+    for(let i=lo;i<ts.length&&ts[i]<tB;i++){
+      const g=segs[i],u0=Math.max(tA,ts[i]),u1=Math.min(tB,i+1<ts.length?ts[i+1]:Infinity);
+      if(!(u1>u0))continue;
+      if(ts[i]>tA)out.push(ts[i]);                                   // マーカーの切り替わり(停止・逆走の始まりと終わり)
+      for(const r of [g.as?-g.a0/g.as:NaN,g.bs?-g.b0/g.bs:NaN]){const t=ts[i]+r;if(t>u0&&t<u1)out.push(t)} // 速度が0を横切る点(進む向きが変わる)
+      if(g.as||g.bs)for(let k=1;k<12;k++)out.push(u0+(u1-u0)*k/12); // 速度が連続的に変わる区間(なめらか)は曲線になるので細分
+    }
+    return out.sort((x,y)=>x-y);
+  };
+  return PV.fn[name]={ts,segs,cum,sp,bk,v0:1}; // v0: 0秒より前(曲頭の助走)は常に×1
 }
 function pvInt(g,d){ // 区間先頭からd秒ぶんの ∫(a0+as·u)(b0+bs·u)du
   return g.a0*g.b0*d+(g.a0*g.bs+g.b0*g.as)*d*d/2+g.as*g.bs*d*d*d/3}
 function pvS(f,t){if(t<=0)return f.v0*t;const ts=f.ts;let lo=0,hi=ts.length-1;
   while(lo<hi){const m=(lo+hi+1)>>1;if(ts[m]<=t)lo=m;else hi=m-1}
   return f.cum[lo]+pvInt(f.segs[lo],t-ts[lo])}
+function pvRange(f,t0,t1){ // 時刻t0〜t1の間の距離Sの最小/最大。逆走で行って戻るノーツを、端の位置だけで画面外と決めつけないため
+  let mn=pvS(f,t0),mx=mn;const e=pvS(f,t1);if(e<mn)mn=e;if(e>mx)mx=e;
+  if(t1>t0)for(const t of f.bk(t0,t1)){const v=pvS(f,t);if(v<mn)mn=v;if(v>mx)mx=v}
+  return [mn,mx];
+}
 const PVC=new WeakMap();
 function drawPreview(){
   if(!PV.open)return; // 閉じている間は計算しない
@@ -321,11 +339,12 @@ function drawPreview(){
     g.save();g.beginPath();g.rect(0,0,w,jy+1);g.clip();
     for(const n of C.notes){
       const name=n.layer&&C.layers[n.layer]?n.layer:'',f=pvFn(name),sN=sNc[name]??(sNc[name]=pvS(f,tNow));
-      const b0=isPts(n)?n.points[0].beat:n.beat,b1=isPts(n)?n.points[n.points.length-1].beat:n.beat;
-      let c=PVC.get(n); // ノーツの始点/終点の累積距離は、ソフランや拍が変わるまで使い回す
-      if(!c||c.f!==f||c.b0!==b0||c.b1!==b1){c={f,b0,b1,s0:pvS(f,b2s(b0)),s1:pvS(f,b2s(b1))};PVC.set(n,c)}
-      if(jy-(c.s1-sN)*kpx>jy+20||jy-(c.s0-sN)*kpx<-40)continue; // 通過済み / まだ遠い
-      yAlt=yAs[name]||(yAs[name]=b=>jy-(pvS(f,b2s(b))-sN)*kpx);
+      const b0=isPts(n)?n.points[0].beat:n.from!==undefined?n.beat-(n.moveAt??2):n.beat,b1=isPts(n)?n.points[n.points.length-1].beat:n.beat;
+      let c=PVC.get(n); // ノーツが通る距離の範囲は、ソフランや拍が変わるまで使い回す
+      if(!c||c.f!==f||c.b0!==b0||c.b1!==b1){const [mn,mx]=pvRange(f,b2s(b0),b2s(b1));c={f,b0,b1,mn,mx};PVC.set(n,c)}
+      if(jy-(c.mx-sN)*kpx>jy+20||jy-(c.mn-sN)*kpx<-40)continue; // 通った範囲ぜんぶが 判定線より下(通過済み) / 画面より上(まだ遠い)
+      yAlt=yAs[name]||(yAs[name]=Object.assign(b=>jy-(pvS(f,b2s(b))-sN)*kpx,{bk:(bA,bB)=>{ // bk: bA〜bBの間の「ソフランの折れ目」の拍
+        const o=f.bk(b2s(bA),b2s(bB)).map(s2b);for(const q of C.tempo)if(q.beat>bA&&q.beat<bB)o.push(q.beat);return o.filter(b=>b>bA+1e-9&&b<bB-1e-9)}}));
       drawNote(n);
     }
     g.restore();yAlt=oy;
@@ -512,6 +531,18 @@ function drawNote(n){
     const pts=bandPts(n);
     for(let i=0;i<pts.length-1;i++){
       const a=pts[i],b=pts[i+1],S=a.curve&&a.curve!=='linear'?16:1,Ls=[],Rs=[];
+      if(yAlt&&yAlt.bk){ // プレビュー: 停止・逆走・加減速のたびに縦の伸び縮みが変わるので、その折れ目で刻む
+        const bs=[];for(let k=0;k<=S;k++)bs.push(a.beat+(b.beat-a.beat)*k/S);
+        for(const e of yAlt.bk(a.beat,b.beat))bs.push(e);
+        bs.sort((x,y)=>x-y);
+        for(const bb of bs){const u=(bb-a.beat)/(b.beat-a.beat),e=ease(a.curve,u),y=yB(bb),lo=a.lane+(b.lane-a.lane)*e,ww=a.w+(b.w-a.w)*e;Ls.push([xl+lo*lw+lw*.155,y]);Rs.push([xl+(lo+ww)*lw-lw*.155,y])}
+        g.globalAlpha=n.type==='guide'?.4:.75;g.fillStyle=a.col||n.color||(n.type==='guide'?GC.guide:NV.band);g.beginPath();
+        for(let k=0;k<Ls.length-1;k++){ // 隣り合う2点の間を1枚の四角にし、向きをそろえて1回で塗る
+          const q=[Ls[k],Ls[k+1],Rs[k+1],Rs[k]];let ar=0;for(let j=0;j<4;j++){const p0=q[j],p1=q[(j+1)%4];ar+=p0[0]*p1[1]-p1[0]*p0[1]}
+          if(Math.abs(ar)<1e-6)continue;if(ar<0)q.reverse();
+          g.moveTo(q[0][0],q[0][1]);for(let j=1;j<4;j++)g.lineTo(q[j][0],q[j][1]);g.closePath()}
+        g.fill();g.globalAlpha=1;continue;
+      }
       for(let k=0;k<=S;k++){const u=k/S,e=ease(a.curve,u),y=yB(a.beat+(b.beat-a.beat)*u),lo=a.lane+(b.lane-a.lane)*e,ww=a.w+(b.w-a.w)*e;Ls.push([xl+lo*lw+lw*.155,y]);Rs.push([xl+(lo+ww)*lw-lw*.155,y])}
       g.globalAlpha=n.type==='guide'?.4:.75;g.fillStyle=a.col||n.color||(n.type==='guide'?GC.guide:NV.band);g.beginPath();
       Ls.forEach((p,k)=>k?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]));
@@ -530,7 +561,13 @@ function drawNote(n){
     const w=(n.width||1)*lw-4;
     if(n.from!==undefined){
       const ma=n.moveAt??2,ml=n.moveLen??1,x0=xl+(n.from+(n.width||1)/2)*lw,x1=xl+(n.lane+(n.width||1)/2)*lw;
-      g.strokeStyle=col;g.globalAlpha=.5;g.lineWidth=2;g.beginPath();g.moveTo(x0,yB(n.beat-ma));g.lineTo(x1,yB(n.beat-ma+ml));g.lineTo(x1,yB(n.beat));g.stroke();g.globalAlpha=1;
+      g.strokeStyle=col;g.globalAlpha=.5;g.lineWidth=2;g.beginPath();g.moveTo(x0,yB(n.beat-ma));
+      if(yAlt&&yAlt.bk){ // プレビュー: 移動中の縦の伸び縮みに沿って、斜めの軌跡を刻む
+        const bs=yAlt.bk(n.beat-ma,n.beat-ma+ml),bt=yAlt.bk(n.beat-ma+ml,n.beat);
+        for(const e of bs)g.lineTo(x0+(x1-x0)*(e-(n.beat-ma))/ml,yB(e));
+        g.lineTo(x1,yB(n.beat-ma+ml));for(const e of bt)g.lineTo(x1,yB(e));
+      }else g.lineTo(x1,yB(n.beat-ma+ml));
+      g.lineTo(x1,yB(n.beat));g.stroke();g.globalAlpha=1;
       glyph(n.type,xl+n.from*lw+2,yB(n.beat-ma),w,col,.3,n.crit);
     }
     glyph(n.type,xl+n.lane*lw+2,yB(n.beat),w,col,0,n.crit);
