@@ -340,10 +340,11 @@ function drawPreview(){
     for(const n of C.notes){
       const name=n.layer&&C.layers[n.layer]?n.layer:'',f=pvFn(name),sN=sNc[name]??(sNc[name]=pvS(f,tNow));
       const b0=isPts(n)?n.points[0].beat:n.from!==undefined?n.beat-(n.moveAt??2):n.beat,b1=isPts(n)?n.points[n.points.length-1].beat:n.beat;
+      if(b1<sb-1e-9)continue; // 判定の拍を過ぎたノーツは、逆走で位置が戻ってきても出さない
       let c=PVC.get(n); // ノーツが通る距離の範囲は、ソフランや拍が変わるまで使い回す
       if(!c||c.f!==f||c.b0!==b0||c.b1!==b1){const [mn,mx]=pvRange(f,b2s(b0),b2s(b1));c={f,b0,b1,mn,mx};PVC.set(n,c)}
       if(jy-(c.mx-sN)*kpx>jy+20||jy-(c.mn-sN)*kpx<-40)continue; // 通った範囲ぜんぶが 判定線より下(通過済み) / 画面より上(まだ遠い)
-      yAlt=yAs[name]||(yAs[name]=Object.assign(b=>jy-(pvS(f,b2s(b))-sN)*kpx,{bk:(bA,bB)=>{ // bk: bA〜bBの間の「ソフランの折れ目」の拍
+      yAlt=yAs[name]||(yAs[name]=Object.assign(b=>jy-(pvS(f,b2s(b))-sN)*kpx,{nowB:sb,bk:(bA,bB)=>{ // bk: bA〜bBの間の「ソフランの折れ目」の拍
         const o=f.bk(b2s(bA),b2s(bB)).map(s2b);for(const q of C.tempo)if(q.beat>bA&&q.beat<bB)o.push(q.beat);return o.filter(b=>b>bA+1e-9&&b<bB-1e-9)}}));
       drawNote(n);
     }
@@ -532,9 +533,11 @@ function drawNote(n){
     for(let i=0;i<pts.length-1;i++){
       const a=pts[i],b=pts[i+1],S=a.curve&&a.curve!=='linear'?16:1,Ls=[],Rs=[];
       if(yAlt&&yAlt.bk){ // プレビュー: 停止・逆走・加減速のたびに縦の伸び縮みが変わるので、その折れ目で刻む
-        const bs=[];for(let k=0;k<=S;k++)bs.push(a.beat+(b.beat-a.beat)*k/S);
+        const nb=yAlt.nowB;if(nb!==undefined&&b.beat<=nb+1e-9)continue; // この区間は通過済み
+        let bs=[];for(let k=0;k<=S;k++)bs.push(a.beat+(b.beat-a.beat)*k/S);
         for(const e of yAlt.bk(a.beat,b.beat))bs.push(e);
         bs.sort((x,y)=>x-y);
+        if(nb!==undefined&&a.beat<nb){bs=bs.filter(x=>x>nb);bs.unshift(nb)} // 通過中の区間は、いまの拍から先だけ
         for(const bb of bs){const u=(bb-a.beat)/(b.beat-a.beat),e=ease(a.curve,u),y=yB(bb),lo=a.lane+(b.lane-a.lane)*e,ww=a.w+(b.w-a.w)*e;Ls.push([xl+lo*lw+lw*.155,y]);Rs.push([xl+(lo+ww)*lw-lw*.155,y])}
         g.globalAlpha=n.type==='guide'?.4:.75;g.fillStyle=a.col||n.color||(n.type==='guide'?GC.guide:NV.band);g.beginPath();
         for(let k=0;k<Ls.length-1;k++){ // 隣り合う2点の間を1枚の四角にし、向きをそろえて1回で塗る
@@ -551,11 +554,11 @@ function drawNote(n){
     }
     const hk=hdef(n),tk=tdef(n),p0=pts[0],p1=pts[pts.length-1];
     const hT=n.head&&n.head!=='none'?n.head:n.type,tT=n.tail&&n.tail!=='hold'&&n.tail!=='none'?n.tail:n.type; // 種類を明示した始点/終点は普通のノーツと同じ色
-    if(hk!=='none')glyph(hk,xl+p0.lane*lw+2,yB(p0.beat),p0.w*lw-4,pcol(n.headColor||n.color,n.headCrit??n.crit,hT),0,n.headCrit??n.crit);
+    if(hk!=='none'&&!(yAlt&&yAlt.nowB!==undefined&&p0.beat<yAlt.nowB-1e-9))glyph(hk,xl+p0.lane*lw+2,yB(p0.beat),p0.w*lw-4,pcol(n.headColor||n.color,n.headCrit??n.crit,hT),0,n.headCrit??n.crit);
     if(tk!=='none'&&pts.length>1)glyph(tk,xl+p1.lane*lw+2,yB(p1.beat),p1.w*lw-4,pcol(n.tailColor||n.color,n.tailCrit??n.crit,tT),0,n.tailCrit??n.crit);
     g.fillStyle=CS['--fg'];g.strokeStyle=CS['--bg'];g.lineWidth=1;
     for(let i=1;i<pts.length-1;i++){if(yAlt||n.points[i].relay)continue;const cx=xl+(pts[i].lane+pts[i].w/2)*lw,yy=yB(pts[i].beat);g.fillRect(cx-4,yy-4,8,8);g.strokeRect(cx-4,yy-4,8,8)}
-    for(const rb of relayBeats(n)){const q=bandAt(n,rb);diamond(xl+(q.lo+q.w/2)*lw,yB(rb),8,NV.relay)}
+    for(const rb of relayBeats(n)){if(yAlt&&yAlt.nowB!==undefined&&rb<yAlt.nowB-1e-9)continue;const q=bandAt(n,rb);diamond(xl+(q.lo+q.w/2)*lw,yB(rb),8,NV.relay)}
     for(const z of ps)if(z.n===n){const p=z.p,x0=xl+p.lane*lw;g.strokeStyle=CS['--ac'];g.lineWidth=2;g.strokeRect(x0,yB(p.beat)-9,(p.width||1)*lw,18)}
   }else{
     const w=(n.width||1)*lw-4;
