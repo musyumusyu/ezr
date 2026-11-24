@@ -1,6 +1,6 @@
 {
-  "name": "譜面エディタ",
-  "short_name": "譜面エディタ",
+  "name": "ama-chart editor",
+  "short_name": "ama-chart editor",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

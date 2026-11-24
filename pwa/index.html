@@ -1,21 +1,25 @@
 <!doctype html>
 <html lang="ja"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>譜面エディタ</title>
+<title>ama-chart editor</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#f3f4f8" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#181b34" media="(prefers-color-scheme: dark)">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="譜面エディタ">
+<meta name="apple-mobile-web-app-title" content="ama-chart editor">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-192.png">
+<link rel="icon" type="image/png" href="data:image/png;base64,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">
 <style>
 :root{--bg:#f3f4f8;--fg:#14161f;--pn:#fff;--ln:#c4c8d8;--ac:#d9267d;--cr:#c58a00;--dm:#d33;--mut:#6b7188;--wv:rgba(70,90,200,.22);--sl:#1f8bd6;--gd:#2eaa5b;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1018;--fg:#f1f2f7;--pn:#171a26;--ln:#3a4060;--ac:#ff5fa8;--cr:#ffd24a;--dm:#ff5c5c;--mut:#9097b3;--wv:rgba(140,170,255,.26);--sl:#4cc3ff;--gd:#5be08a}}
 :root[data-theme="dark"]{--bg:#0e1018;--fg:#f1f2f7;--pn:#171a26;--ln:#3a4060;--ac:#ff5fa8;--cr:#ffd24a;--dm:#ff5c5c;--mut:#9097b3;--wv:rgba(140,170,255,.26);--sl:#4cc3ff;--gd:#5be08a}
 html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font:13px system-ui,-apple-system,"Hiragino Sans",sans-serif}
 #app{display:flex;height:100%}
+#brand{display:flex;align-items:center;gap:10px;padding:2px 2px 10px;margin-bottom:6px;border-bottom:1px solid var(--ln)}
+#brand img{width:36px;height:36px;border-radius:8px;flex:none;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+#brand span{font-weight:700;font-size:16px;letter-spacing:.02em;color:var(--fg)}
 #side{width:340px;flex:none;overflow:auto;background:var(--pn);border-right:1px solid var(--ln);padding:8px;box-sizing:border-box}
 #main{flex:1;display:flex;flex-direction:column;min-width:0;position:relative}
 #ctx{position:absolute;z-index:6;width:310px;max-height:72%;overflow:auto;background:var(--pn);border:1px solid var(--ln);border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.35);padding:8px;display:none}
@@ -34,6 +38,7 @@ details{margin:6px 0}summary{cursor:pointer;font-weight:600}
 </style></head><body>
 <div id="app">
 <aside id="side">
+<div id="brand"><img src="data:image/png;base64,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" alt="" width="36" height="36"><span>ama-chart editor</span></div>
 <details open><summary>譜面情報</summary>
  <div class="r"><span>タイトル</span><input id="ttl" style="flex:1"></div>
  <div class="r"><span>レーン数</span><input id="lns" type="number" min="1" max="16" style="width:56px"><span>オフセット(秒)</span><input id="off" type="number" step="0.001" style="width:84px"></div>
@@ -136,7 +141,12 @@ function delPoints(){
   mod(()=>{by.forEach((arr,n)=>{if(n.points.length-arr.length<2){blocked++;return}n.points=n.points.filter(p=>!arr.includes(p))});ps=[];sel=null;ms=[]});
   if(blocked)msg('点が2つ未満になるスライドは点を消せません(ノーツごと削除してください)');
 }
-function delSel(){if(ps.length){delPoints();closeCtx();return}const L=ms.length?ms.slice():sel?[sel]:[],EV=evs.filter(e=>!fixedEv(e));
+function delMixed(){ // ノーツと点を一緒に削除(取り消し1回)。点が2つ未満になるスライドの点は消さない
+  const W=wholeNotes(),by=new Map();ps.forEach(z=>{if(!by.has(z.n))by.set(z.n,[]);by.get(z.n).push(z.p)});let blocked=0;
+  mod(()=>{C.notes=C.notes.filter(n=>!W.includes(n));by.forEach((arr,n)=>{if(n.points.length-arr.length<2){blocked++;return}n.points=n.points.filter(p=>!arr.includes(p))});ps=[];sel=null;ms=[]});
+  if(blocked)msg('点が2つ未満になるスライドの点は消していません');
+}
+function delSel(){if(isMixed()){delMixed();closeCtx();return}if(ps.length){delPoints();closeCtx();return}const L=ms.length?ms.slice():sel?[sel]:[],EV=evs.filter(e=>!fixedEv(e));
   if(!L.length&&!EV.length){if(evs.length)msg('先頭(0拍)は削除できません');return}
   const skipped=evs.length-EV.length;
   mod(()=>{L.forEach(n=>{const i=C.notes.indexOf(n);if(i>=0)C.notes.splice(i,1);if(draft===n)draft=null});EV.forEach(e=>{const i=e.arr.indexOf(e.obj);if(i>=0)e.arr.splice(i,1)});sel=null;ms=[];evs=[];selEv=null});
@@ -682,6 +692,66 @@ function noteInRect(n,x0,x1,y0,y1){
   for(let k=0;k<=24;k++){const q=bandAt(n,ba+(bb-ba)*k/24);if(q&&xl+q.lo*lw<x1&&xl+(q.lo+q.w)*lw>x0)return true}
   return false;
 }
+// ===== 選択: ノーツと点の混在 =====
+// ms=選んだノーツ(スライド全体を含む) / ps=選んだスライドの点。ps の持ち主のスライドが ms に入っているのは「その点の編集中」の印で、丸ごと選択ではない
+const wholeNotes=()=>ms.filter(n=>!ps.some(z=>z.n===n)); // 丸ごと選んでいるノーツ
+const isMixed=()=>ps.length>0&&wholeNotes().length>0;    // ノーツと点を同時に選んでいる
+const ptInRect=(p,x0,x1,y0,y1)=>{const cy=yB(p.beat),px0=G.xl+p.lane*G.lw,px1=px0+(p.width||1)*G.lw;return cy>=y0-4&&cy<=y1+4&&px1>x0&&px0<x1};
+function setMix(notes,pts){ // 丸ごと選ぶノーツと、点を、まとめて設定(点だけのときは従来どおり)
+  pts=pts.filter(z=>!notes.includes(z.n));ps=pts;ms=notes.slice();
+  if(!ps.length){sel=ms.length===1?ms[0]:null;return}
+  const ns=[...new Set(ps.map(z=>z.n))];
+  if(!ms.length){if(ns.length===1){sel=ns[0];ms=[ns[0]]}else sel=null}else sel=null;
+}
+function togglePt(ph){ // Shift+クリック: 点を選択に出し入れ(選んでいるノーツはそのまま)
+  const W=wholeNotes();
+  if(W.includes(ph.n)){setMix(W.filter(n=>n!==ph.n),ps);return} // 丸ごと選んでいるスライドの点 → そのスライドの選択を外す
+  setMix(W,ps.some(z=>z.p===ph.p)?ps.filter(z=>z.p!==ph.p):[...ps,ph]);
+}
+function startMixDrag(x,y){ // ノーツと点を同時に選んでいるとき、どれを掴んでも全部まとめて動かす
+  const c=cell(x,y),W=wholeNotes();
+  drag={t:'mix',notes:W,pts:ps.slice(),orN:W.map(n=>JSON.parse(JSON.stringify(n))),orP:ps.map(z=>({beat:z.p.beat,lane:z.p.lane})),b0:c.beat,l0:c.lane,db:0,dl:0,snap:JSON.stringify(C)};
+}
+const startSelDrag=(x,y)=>isMixed()?startMixDrag(x,y):startPtDrag(x,y);
+function mixApply(d,db,dl){ // 元の位置から、合計の移動量を一度に適用。だめなら false(元に戻す)
+  d.notes.forEach((n,i)=>{Object.keys(n).forEach(k=>delete n[k]);Object.assign(n,JSON.parse(JSON.stringify(d.orN[i])))});
+  d.pts.forEach((z,i)=>{z.p.beat=d.orP[i].beat;z.p.lane=d.orP[i].lane});
+  let ok=true;
+  if(d.notes.length&&(db||dl))ok=moveList(d.notes,db,dl);
+  if(ok)ok=d.pts.every((z,i)=>d.orP[i].beat+db>=-1e-9&&d.orP[i].lane+dl>=0&&d.orP[i].lane+dl+(z.p.width||1)<=C.lanes);
+  if(ok){
+    d.pts.forEach((z,i)=>{z.p.beat=R6(Math.max(0,d.orP[i].beat+db));z.p.lane=d.orP[i].lane+dl});
+    const ns=[...new Set(d.pts.map(z=>z.n))];
+    if(ns.some(n=>{const q=n.points.map(p=>p.beat).sort((a,b)=>a-b);return q.some((v,k)=>k&&v-q[k-1]<1e-9)}))ok=false;
+    else ns.forEach(n=>n.points.sort((a,b)=>a.beat-b.beat));
+  }
+  if(!ok){d.notes.forEach((n,i)=>{Object.keys(n).forEach(k=>delete n[k]);Object.assign(n,JSON.parse(JSON.stringify(d.orN[i])))});d.pts.forEach((z,i)=>{z.p.beat=d.orP[i].beat;z.p.lane=d.orP[i].lane})}
+  return ok;
+}
+function mixMove(d,hov_){
+  const db=R6(hov_.beat-d.b0),dl=hov_.lane-d.l0;if(db===d.db&&dl===d.dl)return;
+  if(!mixApply(d,db,dl)){mixApply(d,d.db,d.dl);return}
+  pushOnce(d);d.db=db;d.dl=dl;
+}
+function moveMix(db,dl){ // ボタン/矢印キー: 選んだノーツと点を同じだけ動かす
+  const d={notes:wholeNotes(),pts:ps.slice()};d.orN=d.notes.map(n=>JSON.parse(JSON.stringify(n)));d.orP=ps.map(z=>({beat:z.p.beat,lane:z.p.lane}));
+  const snap=JSON.stringify(C);
+  if(!mixApply(d,db,dl)){msg('範囲外や重なりのため動かせません');return}
+  hist.push(snap);if(hist.length>80)hist.shift();fut=[];afterEdit();
+}
+function resizeMix(mode,v){ // ノーツと点の幅をまとめて設定/増減(重なる分・はみ出す分は自動で収める)
+  const W=wholeNotes();
+  resizeNotes(W,mode,v,()=>ps.forEach(z=>{const w0=z.p.width||1;let w=Math.round(mode==='set'?v:w0+v);w=Math.max(1,Math.min(C.lanes-z.p.lane,w));if(w>1)z.p.width=w;else delete z.p.width}));
+}
+function mixForm(b){
+  const row=(...k)=>{const r=mk('div',{className:'r'});r.append(...k);b.append(r)},W=wholeNotes(),st=4/snapN;
+  row(mk('b',{textContent:'ノーツ'+W.length+'個 + 点'+ps.length+'個を選択中'}));
+  {const wi=mk('input',{type:'number',min:1,max:C.lanes,placeholder:'幅'});wi.style.width='54px';
+   wi.onchange=()=>{const v=parseInt(wi.value);if(v>=1)resizeMix('set',v);else panels()};
+   row(lab('幅をまとめて'),wi,mk('button',{textContent:'−1',onclick:()=>resizeMix('add',-1)}),mk('button',{textContent:'＋1',onclick:()=>resizeMix('add',1)}))}
+  row(lab('レーン移動'),mk('button',{textContent:'◀',onclick:()=>moveMix(0,-1)}),mk('button',{textContent:'▶',onclick:()=>moveMix(0,1)}),lab('拍移動'),mk('button',{textContent:'▲',onclick:()=>moveMix(st,0)}),mk('button',{textContent:'▼',onclick:()=>moveMix(-st,0)}));
+  row(mk('button',{textContent:'点の選択を外す',onclick:()=>{setMix(W,[]);panels();draw()}}),mk('button',{textContent:'選択をすべて削除',onclick:delSel}));
+}
 function setPs(list){ps=list;if(!ps.length)return;const ns=[...new Set(ps.map(z=>z.n))];if(ns.length===1){sel=ns[0];ms=[ns[0]]}else{sel=null;ms=[]}}
 function glyphHitAny(x,y){for(let i=C.notes.length-1;i>=0;i--)if(glyphHit(C.notes[i],x,y))return true;return false}
 function startPtDrag(x,y){const c=cell(x,y),snap=JSON.stringify(C);
@@ -774,8 +844,8 @@ function flipOne(n,mode,b0,b1){
   if(nh!==dH||et)n.head=nh;if(nt!==dT||eh)n.tail=nt;
   if(tc!==undefined)n.headCrit=tc;if(hc!==undefined)n.tailCrit=hc;if(tcol)n.headColor=tcol;if(hcol)n.tailColor=hcol;
 }
-function resizeNotes(L,mode,v){ // 選択したノーツの幅をまとめて設定(set)・増減(add)。スライドは全ての点が対象。重なる/はみ出す分は自動で収める
-  if(!L.length)return;const res=[];let skip=0;
+function resizeNotes(L,mode,v,extra){ // 選択したノーツの幅をまとめて設定(set)・増減(add)。スライドは全ての点が対象。重なる/はみ出す分は自動で収める
+  if(!L.length&&!extra)return;const res=[];let skip=0;
   const others=[];L.forEach(n=>cellsOf(n).forEach(k=>others.push({n,k})));
   for(const n of L){
     const c=JSON.parse(JSON.stringify(n));
@@ -785,8 +855,8 @@ function resizeNotes(L,mode,v){ // 選択したノーツの幅をまとめて設
     if(clash(cells,L)||others.some(z=>z.n!==n&&cells.some(m=>cellHit(m,z.k)))){skip++;continue}
     res.push([n,c]);for(let i=others.length-1;i>=0;i--)if(others[i].n===n)others.splice(i,1);cells.forEach(k=>others.push({n,k}));
   }
-  if(res.length)mod(()=>res.forEach(([n,c])=>{Object.keys(n).forEach(k=>delete n[k]);Object.assign(n,c)}));
-  msg(res.length+'個の幅を変更しました'+(skip?'('+skip+'個は重なるため変更なし)':''));
+  if(res.length||extra)mod(()=>{res.forEach(([n,c])=>{Object.keys(n).forEach(k=>delete n[k]);Object.assign(n,c)});if(extra)extra()});
+  msg((res.length+(extra?ps.length:0))+'個の幅を変更しました'+(skip?'('+skip+'個は重なるため変更なし)':''));
 }
 function flipNotes(list,mode){
   if(!list.length)return;
@@ -940,27 +1010,35 @@ cv.addEventListener('pointerdown',e=>{
   if(tool==='point'){ // 点ツール: 点をクリック=選択 / 帯をクリック=点を追加
     const ph=pointAt(x,y);
     if(ph){const had=ps.some(z=>z.p===ph.p);
-      if(e.shiftKey){setPs(had?ps.filter(z=>z.p!==ph.p):[...ps,ph]);panels();draw();return}
-      if(!had)setPs([ph]);startPtDrag(x,y);panels();draw();return}
+      if(e.shiftKey){togglePt(ph);panels();draw();return}
+      if(!had)setPs([ph]);startSelDrag(x,y);panels();draw();return}
     const bn=bandHitTop(x,y);
     if(bn&&!glyphHitAny(x,y)){ // 帯の上: クリック=点を追加 / ドラッグ=範囲選択
       mq={x0:x,y0:y,b0:bY(y),x,y,add:e.shiftKey,pts:true,addAt:e.shiftKey?null:{n:bn,c}};if(!e.shiftKey){sel=null;ms=[];ps=[]}selEv=null;evs=[];panels();draw();return}
   }
-  if(tool==='select'&&!glyphHitAny(x,y)){ // スライドの途中の点: 先にスライド全体を選ばなくても、点を直接選択・ドラッグ
+  if(tool==='select'){ // 点を直接選択・ドラッグ(先にスライド全体を選ばなくていい)。始点/終点は、何も選んでいないとき・Shift・選択済みの点のとき
     const ph=pointAt(x,y);
-    if(ph){const k=ph.n.points.indexOf(ph.p);
-      if(k>0&&k<ph.n.points.length-1){const had=ps.some(z=>z.p===ph.p);
-        if(e.shiftKey){setPs(had?ps.filter(z=>z.p!==ph.p):[...ps,ph]);panels();draw();return}
-        if(!had)setPs([ph]);startPtDrag(x,y);panels();draw();return}}}
+    if(ph){
+      const k=ph.n.points.indexOf(ph.p),edge=k===0||k===ph.n.points.length-1,had=ps.some(z=>z.p===ph.p),none=!sel&&!ms.length&&!ps.length;
+      const top=hit(x,y,true),ok=edge?top===ph.n:!top; // この点より手前に別のノーツが重なっていない
+      if(ok){
+        if(e.shiftKey){togglePt(ph);panels();draw();return}
+        if(had||!edge||none){if(!had)setPs([ph]);startSelDrag(x,y);panels();draw();return}
+      }
+    }
+  }
+  if(tool==='select'&&isMixed()&&!e.shiftKey){ // 混在選択中: 選んでいるノーツ本体を掴んでも、点ごと全部まとめて動かす
+    const hh=hit(x,y,true);if(hh&&ms.includes(hh)){startMixDrag(x,y);selEv=null;evs=[];panels();draw();return}
+  }
   if(sel&&ms.length===1){const hd=handleAt(sel,x,y);
     if(hd&&hd.k==='pt'&&(tool==='select'||tool==='point')){
       const ph={n:sel,p:hd.t.p},had=ps.some(z=>z.p===ph.p);
-      if(e.shiftKey){setPs(had?ps.filter(z=>z.p!==ph.p):[...ps,ph]);panels();draw();return}
-      if(!had)setPs([ph]);startPtDrag(x,y);panels();draw();return}
+      if(e.shiftKey){togglePt(ph);panels();draw();return}
+      if(!had)setPs([ph]);startSelDrag(x,y);panels();draw();return}
     if(hd&&hd.k!=='pt'){const d={n:sel,snap:JSON.stringify(C)};
       drag=hd.k==='len'?null:Object.assign(d,{t:'edge',tg:hd.t.p,side:hd.k});if(drag)return}}
   if(ms.length>1&&!e.shiftKey){for(const n of ms){const hd=handleAt(n,x,y);if(hd&&(hd.k==='L'||hd.k==='R')){startEdgeM(hd);return}}} // 複数選択中: どれかの端を引っ張る=全員まとめて同じだけ変更
-  if(!(tool==='point'&&e.shiftKey))ps=[];
+  if(!(e.shiftKey&&(tool==='point'||tool==='select')))ps=[];
   const noBand=!(tool==='select'||tool==='point'); // 配置ツール中でも既存ノーツ(本体)は選択・移動・編集。帯は選択/点ツールで掴む
   const h=(!['relay','bpm','meter','scroll'].includes(tool)||e.shiftKey)?hit(x,y,noBand&&!e.shiftKey):null;
   if(h){
@@ -1016,6 +1094,7 @@ cv.addEventListener('pointermove',e=>{
           if(ok){pushOnce(d);ns.forEach(n=>n.points.sort((a,b)=>a.beat-b.beat));d.db=db;d.dl=dl}
           else d.list.forEach((i,k)=>{i.p.beat=old[k][0];i.p.lane=old[k][1]})}
       }
+    }else if(d.t==='mix'){mixMove(d,hov)
     }else if(d.t==='ev'){
       const m=d.m;
       if(!fixedEv(m)&&hov.beat!==m.obj.beat&&!m.arr.some(q=>q!==m.obj&&q.beat===hov.beat)){pushOnce(d);m.obj.beat=hov.beat;m.arr.sort((a,b)=>a.beat-b.beat)}
@@ -1036,8 +1115,10 @@ addEventListener('pointerup',e=>{
     if(x1-x0>4||y1-y0>4){
       if(r.pts||r.pref){const got=[];for(const n of r.pts?C.notes:[r.pref])if(isPts(n))for(const p of n.points){const cy=yB(p.beat),px0=G.xl+p.lane*G.lw,px1=px0+(p.width||1)*G.lw;if(cy>=y0-4&&cy<=y1+4&&px1>x0&&px0<x1)got.push({n,p})}
         if(r.pts||got.length){setPs(r.add?[...ps,...got.filter(z=>!ps.some(q=>q.p===z.p))]:got);evs=[];selEv=null;panels();draw();return}}
-      const got=C.notes.filter(n=>noteInRect(n,x0,x1,y0,y1));
-      ms=r.add?[...new Set([...ms,...got])]:got;sel=ms.length===1?ms[0]:null;
+      const gN=[],gP=[]; // 一部の点だけ囲んだスライドは、その点だけ(ノーツと点の混在選択)。全部囲んだ/帯だけ横切ったスライドは全体
+      for(const n of C.notes){if(!noteInRect(n,x0,x1,y0,y1))continue;
+        if(isPts(n)&&n.points.length>=2){const ins=n.points.filter(p=>ptInRect(p,x0,x1,y0,y1));if(ins.length&&ins.length<n.points.length)ins.forEach(p=>gP.push({n,p}));else gN.push(n)}else gN.push(n)}
+      if(r.add)setMix([...new Set([...wholeNotes(),...gN])],[...ps,...gP.filter(z=>!ps.some(q=>q.p===z.p))]);else setMix(gN,gP);
       const gotE=MK.filter(m=>m.x-2<x1&&m.x+m.w+2>x0&&m.y-11<y1&&m.y+3>y0).map(m=>({kind:m.kind,arr:m.arr,obj:m.obj}));
       evs=r.add?[...evs,...gotE.filter(m=>!evs.some(z=>z.obj===m.obj))]:gotE;selEv=evs[0]||null;
     }
@@ -1150,7 +1231,7 @@ addEventListener('keydown',e=>{
   else if(k==='Delete'||k==='Backspace'){if(ms.length||sel||evs.length||ps.length)delSel()}
   else if(k==='Home'){sb=-1;draw()}
   else if(k==='PageUp'&&!playing){sb+=4;draw()}else if(k==='PageDown'&&!playing){sb=Math.max(-4,sb-4);draw()}
-  else if(ms.length&&k.startsWith('Arrow')){e.preventDefault();const d={ArrowUp:[st,0],ArrowDown:[-st,0],ArrowLeft:[0,-1],ArrowRight:[0,1]}[k];if(d)mod(()=>{if(!moveList(ms,d[0],d[1]))msg('動かせません')})}
+  else if(ms.length&&k.startsWith('Arrow')){e.preventDefault();const d={ArrowUp:[st,0],ArrowDown:[-st,0],ArrowLeft:[0,-1],ArrowRight:[0,1]}[k];if(d){if(isMixed())moveMix(d[0],d[1]);else mod(()=>{if(!moveList(ms,d[0],d[1]))msg('動かせません')})}}
 });
 
 // ===== サイドパネル =====
@@ -1314,7 +1395,7 @@ function pointForm(b){
   row(cpy,del);row(bk);
 }
 function fillForm(b){
-  b.replaceChildren();const n=sel;if(ps.length){pointForm(b);return}
+  b.replaceChildren();const n=sel;if(isMixed()){mixForm(b);return}if(ps.length){pointForm(b);return}
   if(evs.length&&!sel&&!ms.length){evForm(b);return}
   if(ms.length>1){bulkForm(b);return}
   if(!n){b.textContent='ノーツを選択してください';return}
