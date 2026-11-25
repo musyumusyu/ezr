@@ -34,7 +34,8 @@ details{margin:6px 0}summary{cursor:pointer;font-weight:600}
 #st{display:inline-block;width:215px;white-space:nowrap;overflow:hidden;vertical-align:bottom;font-variant-numeric:tabular-nums}#msg{display:inline-block;max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}#tools button,#tools2 button{display:flex;flex-direction:column;align-items:center;gap:1px;padding:2px 4px;min-width:62px;font-size:11px;line-height:1.15}#tools canvas,#tools2 canvas{flex:none;width:56px;height:40px;min-height:0;cursor:pointer}
 #pvPanel{position:absolute;right:6px;z-index:5;display:none;flex-direction:column;align-items:flex-end;gap:4px}#pvCtl,#pvBody{background:var(--pn);border:1px solid var(--ln);border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.3);padding:6px;box-sizing:border-box}#pvCtl{width:224px}#pvTab{position:absolute;right:0;z-index:5;display:none;border-radius:8px 0 0 8px}
 #evb{gap:6px;align-items:center}.sw{width:16px;height:16px;padding:0;border-radius:4px}input[type=color]{width:34px;height:24px;padding:1px}
-#st{color:var(--mut);margin-left:auto}#msg{color:var(--ac)}
+#logRow{flex:0 0 100%;display:flex;align-items:center;gap:10px;height:20px;line-height:20px;overflow:hidden} /* ログ専用の1行。メッセージが出入りしても、ツールバーの高さが変わらない */
+#msg{color:var(--ac);flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#st{color:var(--mut);margin-left:auto;flex:none;white-space:nowrap}
 </style></head><body>
 <div id="app">
 <aside id="side">
@@ -80,7 +81,7 @@ details{margin:6px 0}summary{cursor:pointer;font-weight:600}
  </span>
  <label>重ねる処理 <select id="nd"><option value="0">デフォルト</option><option value="-1">手前に置く</option><option value="1">奥に置く</option></select></label><span class="brk"></span><button id="bEdit">編集</button><button id="bPlay">▶ 再生</button><button id="bHome" title="最初の小節に戻る">⏮ 最初へ</button><label>小節 <input id="jmp" type="number" min="1" step="1" value="1" style="width:56px"></label><button id="bJmp" title="任意の小節にジャンプ">ジャンプ</button><label><input type="checkbox" id="hs" checked> SE</label><label><input type="checkbox" id="wvOn"> 波形</label><label>曲音量 <input type="range" id="vol" min="0" max="1" step="0.01" value="1" style="width:70px;vertical-align:middle;padding:0"></label>
  <button id="bUn">↶</button><button id="bRe">↷</button><button id="bZm">−</button><button id="bZp">＋</button><input type="range" id="zm" min="0" max="100" step="0.1" title="拡大率" style="width:140px;padding:0;vertical-align:middle"><span id="zmv" class="m" style="display:inline-block;min-width:44px"></span><button id="zRst" title="拡大率を初期値に戻す">初期値</button>
- <span id="msg"></span><span id="st"></span>
+ <div id="logRow"><span id="msg"></span><span id="st"></span></div>
 </div>
 <canvas id="cv"></canvas>
 <button id="pvTab" title="ゲーム画面プレビューを開く">◀ プレビュー</button>
