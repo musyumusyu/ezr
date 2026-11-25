@@ -86,12 +86,14 @@ details{margin:6px 0}summary{cursor:pointer;font-weight:600}
 <button id="pvTab" title="ゲーム画面プレビューを開く">◀ プレビュー</button>
 <div id="pvPanel">
 <div id="pvCtl">
-<div class="r" style="justify-content:space-between"><b>プレビュー</b><button id="pvX" title="閉じる">✕</button></div>
+<div class="r" id="pvHd" style="justify-content:space-between;cursor:move;touch-action:none;user-select:none" title="ドラッグで移動 / ダブルクリックで元の位置へ"><b>プレビュー ⠿</b><span style="display:flex;gap:4px"><button id="pvMult" title="プレビュー左上の倍率(全体・レイヤーごと)を、まとめて表示/非表示">倍率</button><button id="pvBar" title="スライダーなどの操作部だけ閉じる/開く">▾</button><button id="pvX" title="プレビューを閉じる">✕</button></span></div>
+<div id="pvSet">
 <div class="r"><label>ノーツ速度 <input type="range" id="pvS" min="1" max="20" step="0.5" style="width:96px;padding:0"></label><span id="pvSv" class="m"></span></div>
 <div class="r"><label>幅 <input type="range" id="pvW" min="200" max="640" step="10" style="width:110px;padding:0"></label><span id="pvWv" class="m"></span></div>
 <div class="r"><label>画面の高さ <input type="range" id="pvH" min="160" max="900" step="10" style="width:96px;padding:0"></label><span id="pvHv" class="m"></span></div>
 <div class="r"><label>判定ラインの高さ <input type="range" id="pvJ" min="4" max="60" step="1" style="width:88px;padding:0"></label><span id="pvJv" class="m"></span></div>
 <div class="r"><label>倍率の計算 <select id="pvMode"><option value="mul">全体×レイヤー</option><option value="solo">レイヤーごと</option></select></label></div>
+</div>
 </div>
 <div id="pvBody"><canvas id="pv" style="flex:none;cursor:default;touch-action:auto;width:100%;display:block;border:1px solid var(--ln);border-radius:6px"></canvas></div>
 </div>
@@ -270,18 +272,27 @@ function cntUpdate(){
   cntEl.append(mk('div',{textContent:'うちクリティカル: '+r.crit+(CNT.damage?'':'  (ダメージは合計に含めない)')}));
 }
 // ===== ゲーム画面プレビュー(ソフラン・レイヤー反映) =====
-const PV={hs:6,w:320,h:440,jl:18,mode:'mul',open:null,key:'',fn:{},we:320};
+const PV={hs:6,w:320,h:440,jl:18,mode:'mul',open:null,key:'',fn:{},we:320,bars:true,mult:true,px:null,py:null}; // bars=操作部(スライダー)を出す / px,py=移動したパネルの位置(nullなら右端)
 for(const key of ['chart-editor-pv','chart-editor-pv2'])try{const o=JSON.parse(localStorage.getItem(key)); // 旧版の保存値は速さ・判定線・開閉だけ引き継ぎ、大きさは新しい既定値から
-  if(o){if(o.hs>=1&&o.hs<=20)PV.hs=o.hs;if(key==='chart-editor-pv2'){if(o.w>=200&&o.w<=640)PV.w=o.w;if(o.h>=160&&o.h<=900)PV.h=o.h}if(o.jl>=4&&o.jl<=60)PV.jl=o.jl;if(o.mode==='solo')PV.mode='solo';if(typeof o.open==='boolean')PV.open=o.open}}catch(e){}
+  if(o){if(o.hs>=1&&o.hs<=20)PV.hs=o.hs;if(key==='chart-editor-pv2'){if(o.w>=200&&o.w<=640)PV.w=o.w;if(o.h>=160&&o.h<=900)PV.h=o.h}if(o.jl>=4&&o.jl<=60)PV.jl=o.jl;if(o.mode==='solo')PV.mode='solo';if(typeof o.open==='boolean')PV.open=o.open;if(key==='chart-editor-pv2'){if(o.bars===false)PV.bars=false;if(o.mult===false)PV.mult=false;if(typeof o.px==='number'&&typeof o.py==='number'){PV.px=o.px;PV.py=o.py}}}}catch(e){}
 if(PV.open===null)PV.open=window.innerWidth>=1100; // 初回は広い画面だけ開く
-const pvSave=()=>{try{localStorage.setItem('chart-editor-pv2',JSON.stringify({hs:PV.hs,w:PV.w,h:PV.h,jl:PV.jl,mode:PV.mode,open:PV.open}))}catch(e){}};
+const pvSave=()=>{try{localStorage.setItem('chart-editor-pv2',JSON.stringify({hs:PV.hs,w:PV.w,h:PV.h,jl:PV.jl,mode:PV.mode,open:PV.open,bars:PV.bars,mult:PV.mult,px:PV.px,py:PV.py}))}catch(e){}};
 function pvLayout(){ // 開閉・位置・大きさを反映(操作部は固定サイズ。画面部だけ幅・高さが変わるので、バーを動かしても操作部は動かない)
   const mw=$('main').clientWidth||W||900,mh=cv.clientHeight||H||600;
   PV.we=Math.max(160,Math.min(PV.w,Math.floor(mw*0.6)-24));
-  const he=Math.max(160,Math.min(PV.h,mh-240));
-  PV_RES=PV.open?Math.max(PV.we,212)+24:0;const top=(cv.offsetTop+8)+'px';
+  const he=Math.max(160,Math.min(PV.h,mh-(PV.bars?240:90)));
+  const moved=PV.px!==null&&PV.py!==null; // つかんで動かしたあとは、レーン側の場所はあけず、ふつうに上に重ねる
+  PV_RES=PV.open&&!moved?Math.max(PV.we,212)+24:0;const top=(cv.offsetTop+8)+'px';
+  $('pvSet').style.display=PV.bars?'':'none';$('pvBar').textContent=PV.bars?'▾':'▸';
+  $('pvMult').style.cssText=PV.mult?'background:var(--ac);color:#fff;border-color:var(--ac)':'';$('pvMult').setAttribute('aria-pressed',PV.mult?'true':'false');
   $('pvPanel').style.display=PV.open?'flex':'none';$('pvTab').style.display=PV.open?'none':'block';
-  $('pvPanel').style.top=top;$('pvTab').style.top=top;$('pvBody').style.width=(PV.we+12)+'px';$('pv').style.height=he+'px';
+  $('pvTab').style.top=top;$('pvBody').style.width=(PV.we+12)+'px';$('pv').style.height=he+'px';
+  const ps_=$('pvPanel').style;
+  if(moved){ // 画面の外に出ないよう、ヘッダーが必ず見える範囲に収める
+    const pw=Math.max(224,PV.we+12),mw2=$('main').clientWidth,mh2=$('main').clientHeight;
+    PV.px=Math.max(0,Math.min(mw2-Math.min(pw,mw2)-0,PV.px));PV.py=Math.max(0,Math.min(mh2-40,PV.py));
+    ps_.left=PV.px+'px';ps_.top=PV.py+'px';ps_.right='auto'
+  }else{ps_.left='';ps_.right='6px';ps_.top=top}
 }
 // 速度表: マーカー(拍)を秒に直す。rampのマーカーは次のマーカーの速度へ直線で変化(曲線の「次まで」と同じ向き)
 function pvTable(arr){return arr.slice().sort((x,y)=>x.beat-y.beat).map(q=>({t:b2s(q.beat),v:+q.speed||0,r:!!q.ramp}))}
@@ -363,8 +374,8 @@ function drawPreview(){
     g.restore();yAlt=oy;
     g.strokeStyle=CS['--ac'];g.lineWidth=2;g.beginPath();g.moveTo(xl,jy);g.lineTo(xl+lw*L,jy);g.stroke();
     g.fillStyle=CS['--mut'];g.font='11px sans-serif';g.textAlign='left';g.textBaseline='alphabetic';
-    const rows=[['全体',pvFn('').sp(tNow)],...Object.keys(C.layers).slice(0,6).map(k=>[k,pvFn(k).sp(tNow)])];
-    rows.forEach(([nm,v],i)=>g.fillText(nm+' ×'+Math.round(v*100)/100,8,17+i*13));
+    if(PV.mult){const rows=[['全体',pvFn('').sp(tNow)],...Object.keys(C.layers).slice(0,6).map(k=>[k,pvFn(k).sp(tNow)])]; // 全体とレイヤーごとの倍率(パネルの「倍率」ボタンで、まとめてオンオフ)
+      rows.forEach(([nm,v],i)=>g.fillText(nm+' ×'+Math.round(v*100)/100,8,17+i*13))}
   }finally{g=og;G=oG;ms=oms;sel=osel;ps=ops;yAlt=oy}
 }
 const pvTxt=()=>{$('pvSv').textContent=PV.hs.toFixed(1);$('pvWv').textContent=PV.w+'px';$('pvHv').textContent=PV.h+'px';$('pvJv').textContent=PV.jl+'%'};
@@ -376,6 +387,16 @@ $('pvJ').oninput=e=>{PV.jl=+e.target.value;pvTxt();pvSave();draw()};
 $('pvMode').onchange=e=>{PV.mode=e.target.value;pvSave();draw()};
 $('pvX').onclick=()=>{PV.open=false;pvSave();pvLayout();draw()};
 $('pvTab').onclick=()=>{PV.open=true;pvSave();pvLayout();draw()};
+$('pvBar').onclick=()=>{PV.bars=!PV.bars;pvSave();pvLayout();draw()};
+$('pvMult').onclick=()=>{PV.mult=!PV.mult;pvSave();pvLayout();draw();msg('プレビューの倍率表示: '+(PV.mult?'オン(全体・レイヤーごと)':'オフ'))};
+{ // パネルをつかんで移動(ヘッダーをドラッグ)/ ダブルクリックで元の位置へ
+  const hd=$('pvHd');let dg=null;
+  hd.addEventListener('pointerdown',e=>{if(e.target.closest('button'))return;const pr=$('pvPanel').getBoundingClientRect(),mr=$('main').getBoundingClientRect();
+    dg={id:e.pointerId,dx:e.clientX-pr.left,dy:e.clientY-pr.top,mx:mr.left,my:mr.top};try{hd.setPointerCapture(e.pointerId)}catch(er){}e.preventDefault()});
+  hd.addEventListener('pointermove',e=>{if(!dg||e.pointerId!==dg.id)return;PV.px=e.clientX-dg.mx-dg.dx;PV.py=e.clientY-dg.my-dg.dy;pvLayout();draw()});
+  const end=e=>{if(dg&&e.pointerId===dg.id){dg=null;pvSave()}};hd.addEventListener('pointerup',end);hd.addEventListener('pointercancel',end);
+  hd.addEventListener('dblclick',e=>{if(e.target.closest('button'))return;PV.px=null;PV.py=null;pvSave();pvLayout();draw()});
+}
 pvLayout();window.addEventListener('resize',()=>{pvLayout()});
 const _drawMain=draw;draw=function(){_drawMain();try{drawPreview()}catch(e){console.error(e)}try{zmSync()}catch(e){}};
 // ===== レイヤー選択の保存・復元 =====
@@ -589,7 +610,7 @@ function drawNote(n){
   }
   const b=bbox(n);
   if(ms.includes(n)||n===sel){g.strokeStyle=CS['--fg'];g.lineWidth=2;g.setLineDash([4,3]);g.strokeRect(b.x-2,b.y,b.w+4,b.h);g.setLineDash([]);if((n===sel&&ms.length<=1)||ms.length>1)grips(n)}
-  if(n.layer!==undefined){g.fillStyle=CS['--mut'];g.font='10px sans-serif';g.textAlign='left';g.fillText(n.layer,b.x+b.w+4,b.y+11)}
+  if(n.layer!==undefined&&!yAlt){g.fillStyle=CS['--mut'];g.font='10px sans-serif';g.textAlign='left';g.fillText(n.layer,b.x+b.w+4,b.y+11)} // yAltがあるのはプレビュー。ノーツの横のレイヤー名は、編集画面だけに出す
 }
 function draw(){
   geo();const st=getComputedStyle(document.documentElement);
@@ -897,9 +918,14 @@ function toSlideStart(h){ // スライドツールで置いてあるノーツを
   msg('スライドの始点にしました。次の点をクリック、Enterで確定(点を足さずに確定すると元のノーツに戻ります)');
 }
 let lastRC=0;
+let rcPrev=null; // 直前の右クリック(右ダブルクリック判定用)
+function delNoteNow(h){mod(()=>{const i=C.notes.indexOf(h);if(i>=0)C.notes.splice(i,1);ms=ms.filter(n=>n!==h);if(sel===h)sel=null;ps=ps.filter(z=>z.n!==h);if(draft===h)draft=null;selEv=null;evs=[]});closeCtx();msg('ノーツを削除しました(↶で戻せます)')}
 function rightClick(e){
   if(playing)return;
-  const [x,y]=pos(e);geo();const m=hitMarker(x,y);
+  const [x,y]=pos(e);geo();
+  {const now=performance.now(),hh=hit(x,y,false),pv_=rcPrev;rcPrev={t:now,x,y,h:hh}; // 同じノーツを素早く2回右クリック=削除
+   if(pv_&&hh&&pv_.h===hh&&now-pv_.t<450&&Math.hypot(x-pv_.x,y-pv_.y)<12){rcPrev=null;delNoteNow(hh);return}}
+  const m=hitMarker(x,y);
   if(m){if(!evs.some(z=>z.obj===m.obj)){evs=[{kind:m.kind,arr:m.arr,obj:m.obj}];selEv=m;sel=null;ms=[];panels();draw()}openCtx(x,y);return}
   const ph=pointAt(x,y);
   if(ph&&(tool==='point'||sel===ph.n||ps.some(z=>z.n===ph.n))){if(!ps.some(z=>z.p===ph.p))setPs([ph]);evs=[];selEv=null;panels();draw();openCtx(x,y);return}
