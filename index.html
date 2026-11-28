@@ -20,9 +20,12 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font:13px sy
 #brand{display:flex;align-items:center;gap:10px;padding:2px 2px 10px;margin-bottom:6px;border-bottom:1px solid var(--ln)}
 #brand img{width:36px;height:36px;border-radius:8px;flex:none;box-shadow:0 1px 4px rgba(0,0,0,.25)}
 #brand span{font-weight:700;font-size:16px;letter-spacing:.02em;color:var(--fg)}
+html,body{overflow:hidden;overscroll-behavior:none} /* 画面全体は動かさない(はみ出す編集パネルは、パネルの中でスクロール) */
+#main{overflow:hidden}
+#side{overscroll-behavior:contain;padding-bottom:48px!important}
 #side{width:340px;flex:none;overflow:auto;background:var(--pn);border-right:1px solid var(--ln);padding:8px;box-sizing:border-box}
 #main{flex:1;display:flex;flex-direction:column;min-width:0;position:relative}
-#ctx{position:absolute;z-index:6;width:310px;max-height:72%;overflow:auto;background:var(--pn);border:1px solid var(--ln);border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.35);padding:8px;display:none}
+#ctx{box-sizing:border-box;position:absolute;z-index:6;width:310px;max-height:72%;overflow:auto;overscroll-behavior:contain;background:var(--pn);border:1px solid var(--ln);border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.35);padding:8px;display:none}
 #bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px;background:var(--pn);border-bottom:1px solid var(--ln)}
 #tools,#tools2{display:flex;gap:3px;flex-wrap:wrap}.brk{flex-basis:100%;width:100%;height:0}
 canvas{flex:1;min-height:0;width:100%;display:block;cursor:crosshair;touch-action:none}
@@ -281,12 +284,13 @@ const pvSave=()=>{try{localStorage.setItem('chart-editor-pv2',JSON.stringify({hs
 function pvLayout(){ // 開閉・位置・大きさを反映(操作部は固定サイズ。画面部だけ幅・高さが変わるので、バーを動かしても操作部は動かない)
   const mw=$('main').clientWidth||W||900,mh=cv.clientHeight||H||600;
   PV.we=Math.max(160,Math.min(PV.w,Math.floor(mw*0.6)-24));
-  const he=Math.max(160,Math.min(PV.h,mh-(PV.bars?240:90)));
+  let he=Math.max(120,Math.min(PV.h,mh-(PV.bars?240:90)));
   const moved=PV.px!==null&&PV.py!==null; // つかんで動かしたあとは、レーン側の場所はあけず、ふつうに上に重ねる
   PV_RES=PV.open&&!moved?Math.max(PV.we,212)+24:0;const top=(cv.offsetTop+8)+'px';
   $('pvSet').style.display=PV.bars?'':'none';$('pvBar').textContent=PV.bars?'▾':'▸';
   $('pvMult').style.cssText=PV.mult?'background:var(--ac);color:#fff;border-color:var(--ac)':'';$('pvMult').setAttribute('aria-pressed',PV.mult?'true':'false');
   $('pvPanel').style.display=PV.open?'flex':'none';$('pvTab').style.display=PV.open?'none':'block';
+  {const ch=PV.open?$('pvCtl').offsetHeight:0;if(ch)he=Math.max(100,Math.min(PV.h,mh-ch-30))} // 操作部の実際の高さを引く(画面の下にはみ出さない)
   $('pvTab').style.top=top;$('pvBody').style.width=(PV.we+12)+'px';$('pv').style.height=he+'px';
   const ps_=$('pvPanel').style;
   if(moved){ // 画面の外に出ないよう、ヘッダーが必ず見える範囲に収める
@@ -294,6 +298,10 @@ function pvLayout(){ // 開閉・位置・大きさを反映(操作部は固定�
     PV.px=Math.max(0,Math.min(mw2-Math.min(pw,mw2)-0,PV.px));PV.py=Math.max(0,Math.min(mh2-40,PV.py));
     ps_.left=PV.px+'px';ps_.top=PV.py+'px';ps_.right='auto'
   }else{ps_.left='';ps_.right='6px';ps_.top=top}
+  if(PV.open){ // 下にはみ出していたら、プレビュー画面を縮める。小さな画面で縮めきれないときは、パネルの中でスクロール
+    const mr=$('main').getBoundingClientRect();ps_.maxHeight=Math.max(120,mr.height-(parseFloat(ps_.top)||0)-6)+'px';ps_.overflowY='auto';
+    const over=$('pvPanel').getBoundingClientRect().bottom-mr.bottom;if(over>0){he=Math.max(100,he-over-4);$('pv').style.height=he+'px'}
+  }
 }
 // 速度表: マーカー(拍)を秒に直す。rampのマーカーは次のマーカーの速度へ直線で変化(曲線の「次まで」と同じ向き)
 function pvTable(arr){return arr.slice().sort((x,y)=>x.beat-y.beat).map(q=>({t:b2s(q.beat),v:+q.speed||0,r:!!q.ramp}))}
@@ -570,6 +578,13 @@ function edgeAny(x,y){ // 選んでいないノーツも、端のあたりを掴
       if(x>=z.l0&&x<=z.l1&&x<=mid)return {n,k:'L',t};if(x>=z.r0&&x<=z.r1&&x>mid)return {n,k:'R',t}}}
   return null;
 }
+function edgeTarget(x,y,shift){ // 端を掴めるか。カーソル(←→)と、押したときの動きは、必ずこの判定を使う
+  if(shift)return null;
+  if(tool==='select'||tool==='point')return edgeAny(x,y); // 選択/点ツール: どのノーツの端でも
+  const L=sel&&ms.length<=1?[sel]:ms; // 置くツール: 選んでいるノーツの端だけ
+  for(const n of L){const hd=handleAt(n,x,y);if(hd&&(hd.k==='L'||hd.k==='R'))return {n,k:hd.k,t:hd.t}}
+  return null;
+}
 function grips(n,a){ // 端の目印(つかむ場所): 大きめで色つき
   const {xl,lw}=G;g.save();if(a!==undefined)g.globalAlpha=a;
   for(const t of targets(n)){const y=yB(t.beat),x0=xl+t.lane*lw,x1=x0+t.w*lw;
@@ -752,9 +767,9 @@ function togglePt(ph){ // Shift+クリック: 点を選択に出し入れ(選ん
   setMix(W,ps.some(z=>z.p===ph.p)?ps.filter(z=>z.p!==ph.p):[...ps,ph]);
 }
 // 移動の基準: グリッド幅ずつ=押した位置のマス / 掴んだものをグリッドへ=掴んだものの今の位置(動かすと、それがグリッドの線に乗る)
-const mvRef=(c,anc,x,y)=>mvMode==='snap'&&anc?{b:anc.b,l:anc.l,sr:{hb:anc.b,hl:anc.l,pb:bY(y),pl:(x-G.xl)/G.lw}}:{b:c.beat,l:c.lane};
-// 掴んだものの位置: ノーツ=そのノーツ / スライドの点を掴んだ=その点 / スライドの帯の途中を掴んだ=掴んだ場所そのもの
-function heldOf(h,x,y){if(!isPts(h))return {b:h.beat,l:h.lane};const ph=pointAt(x,y);if(ph&&ph.n===h)return {b:ph.p.beat,l:ph.p.lane};return {b:bY(y),l:(x-G.xl)/G.lw}}
+const mvRef=(c,anc,x,y)=>mvMode==='snap'&&anc&&!anc.band?{b:anc.b,l:anc.l,sr:{hb:anc.b,hl:anc.l,pb:bY(y),pl:(x-G.xl)/G.lw}}:{b:c.beat,l:c.lane};
+// 掴んだものの位置: ノーツ=そのノーツ / スライドの点を掴んだ=その点 / スライドの帯の途中を掴んだ=グリッド幅ずつ(点がグリッドからずれないように)
+function heldOf(h,x,y){if(!isPts(h))return {b:h.beat,l:h.lane};const ph=pointAt(x,y);if(ph&&ph.n===h)return {b:ph.p.beat,l:ph.p.lane};return {b:bY(y),l:(x-G.xl)/G.lw,band:true}}
 // この移動の合計の移動量 [拍,レーン]。グリッド幅ずつ=押したマスからのマス数 / グリッド=掴んだものの位置+ポインタの移動量 を格子に合わせた先
 function mvD(d){if(d.sr){const pb=bY(hov.y),pl=(hov.x-G.xl)/G.lw;return [R6(snapB(d.sr.hb+(pb-d.sr.pb))-d.sr.hb),R6(roundL(d.sr.hl+(pl-d.sr.pl))-d.sr.hl)]}return [R6(hov.beat-d.b0),R6(hov.lane-d.l0)]}
 function startMixDrag(x,y,anc){ // ノーツと点を同時に選んでいるとき、どれを掴んでも全部まとめて動かす
@@ -1061,7 +1076,15 @@ function renderCtx(){
   const hd=mk('div',{className:'r'});hd.append(mk('b',{textContent:(evs.length&&!sel&&!ms.length)?'マーカー設定':'ノーツ設定'}),mk('button',{textContent:'×',onclick:closeCtx}));
   const box=mk('div');c.append(hd,box);fillForm(box);
 }
-function openCtx(x,y){const c=$('ctx');c.style.display='block';c.style.left=Math.max(4,Math.min(W-320,x+8))+'px';c.style.top=Math.max(4,cv.offsetTop+Math.min(y,H-160))+'px';renderCtx()}
+let ctxAt=null;
+function openCtx(x,y){const c=$('ctx');ctxAt={x,y};c.style.display='block';renderCtx();placeCtx()}
+function placeCtx(){ // 画面(譜面エリア)の中に収める。はみ出すときは高さを縮めて、パネルの中でスクロールできるようにする
+  const c=$('ctx');if(!ctxAt||c.style.display==='none')return;const m=$('main'),mh=m.clientHeight,mw=m.clientWidth;
+  c.style.maxHeight=(mh-12)+'px';
+  const pw=Math.min(c.offsetWidth||310,mw-8),ph=c.offsetHeight;
+  c.style.left=Math.max(4,Math.min(mw-pw-4,ctxAt.x+8))+'px';
+  c.style.top=Math.max(4,Math.min(mh-ph-4,cv.offsetTop+ctxAt.y))+'px';
+}
 
 cv.addEventListener('pointerdown',e=>{
   if(pickCb){e.preventDefault();pickFromCanvas(e);return}
@@ -1087,6 +1110,11 @@ cv.addEventListener('pointerdown',e=>{
     const q=ab?{beat:nt.beat,lane:nt.lane}:{beat:c.beat,lane};const w_=ab?(nt.width||1):wd;if(w_>1)q.width=w_;if($('ptKind').value==='relay')q.relay=true;
     if(ab)C.notes.splice(C.notes.indexOf(nt),1);
     draft.points.push(q);afterEdit()}return}
+  {const eh=edgeTarget(x,y,e.shiftKey); // 端を掴んだ=幅を変える。点の選択・移動・混在選択の移動より先に判定する(カーソルが←→のときは、必ず幅変更になる)
+   if(eh){
+     if(ms.length>1&&ms.includes(eh.n)){selEv=null;evs=[];startEdgeM({k:eh.k,t:eh.t});panels();draw();return} // 複数選択中の端=全員まとめて
+     if(!ms.includes(eh.n)){ps=[];ms=[eh.n];sel=eh.n}
+     selEv=null;evs=[];drag={n:eh.n,snap:JSON.stringify(C),t:'edge',tg:eh.t.p,side:eh.k};panels();draw();return}}
   if(tool==='curve'){ // 造形変化: 帯の区間をクリックするたびに 直線→加速→減速→なめらか→直線…
     const bn=bandHitTop(x,y);if(bn){cycleCurve(bn,bY(y));return}if(!glyphHitAny(x,y)){msg('スライド/ガイドの帯をクリックすると、その区間の形が変わります');return}}
   if(tool==='point'){ // 点ツール: 点をクリック=選択 / 帯をクリック=点を追加
@@ -1111,10 +1139,6 @@ cv.addEventListener('pointerdown',e=>{
   }
   if(tool==='select'&&isMixed()&&!e.shiftKey){ // 混在選択中: 選んでいるノーツ本体を掴んでも、点ごと全部まとめて動かす
     const hh=hit(x,y,true);if(hh&&ms.includes(hh)){startMixDrag(x,y,heldOf(hh,x,y));selEv=null;panels();draw();return}
-  }
-  if((tool==='select'||tool==='point')&&!e.shiftKey&&!(sel&&ms.length===1&&handleAt(sel,x,y))&&!(ms.length>1&&ms.some(n=>{const hd=handleAt(n,x,y);return hd&&(hd.k==='L'||hd.k==='R')}))){
-    const eh=edgeAny(x,y); // 端を掴んだ: そのノーツを選んで、幅を変え始める
-    if(eh){ps=[];selEv=null;evs=[];ms=[eh.n];sel=eh.n;drag={n:eh.n,snap:JSON.stringify(C),t:'edge',tg:eh.t.p,side:eh.k};panels();draw();return}
   }
   if(sel&&ms.length===1){const hd=handleAt(sel,x,y);
     if(hd&&hd.k==='pt'&&(tool==='select'||tool==='point')){
@@ -1160,7 +1184,7 @@ cv.addEventListener('pointerdown',e=>{
   }
 });
 cv.addEventListener('pointermove',e=>{
-  const [x,y]=pos(e);geo();hov=Object.assign(cell(x,y),{x,y});cv.style.cursor=(!drag&&!mq&&!playing&&(tool==='select'||tool==='point')&&edgeAny(x,y))?'ew-resize':'';
+  const [x,y]=pos(e);geo();hov=Object.assign(cell(x,y),{x,y});cv.style.cursor=(!drag&&!mq&&!playing&&edgeTarget(x,y,e.shiftKey))?'ew-resize':'';
   if(mq){mq.x=x;mq.y=y}
   if(drag&&!playing){
     const d=drag;if(d.t==='move'&&Math.hypot(x-d.sx,y-d.sy)>4)d.moved=true;
@@ -1203,13 +1227,14 @@ addEventListener('pointerup',e=>{
     mqSync();const r=mq;mq=null;
     const x0=Math.min(r.x0,r.x),x1=Math.max(r.x0,r.x),y0=Math.min(r.y0,r.y),y1=Math.max(r.y0,r.y);
     if(x1-x0>4||y1-y0>4){
-      if(r.pts||r.pref){const got=[];for(const n of r.pts?C.notes:[r.pref])if(isPts(n))for(const p of n.points){const cy=yB(p.beat),px0=G.xl+p.lane*G.lw,px1=px0+(p.width||1)*G.lw;if(cy>=y0-4&&cy<=y1+4&&px1>x0&&px0<x1)got.push({n,p})}
+      if(r.pts||(r.pref&&!C.notes.some(n=>n!==r.pref&&noteInRect(n,x0,x1,y0,y1)))){const got=[]; // 選んでいるスライドの点だけを囲んだときだけ、点の範囲選択。ほかのノーツも囲んだら、ふつうの範囲選択for(const n of r.pts?C.notes:[r.pref])if(isPts(n))for(const p of n.points){const cy=yB(p.beat),px0=G.xl+p.lane*G.lw,px1=px0+(p.width||1)*G.lw;if(cy>=y0-4&&cy<=y1+4&&px1>x0&&px0<x1)got.push({n,p})}
         if(r.pts||got.length){if(r.add)setMix(wholeNotes(),[...ps,...got.filter(z=>!ps.some(q=>q.p===z.p))]);else setPs(got);evs=[];selEv=null;panels();draw();return}}
-      // スライド: 点の一部だけを小さく囲んだ(終点だけ等)ときは、その点だけを選び、ふつうのノーツと一緒に動かせる。スライドの半分以上が範囲に入っている(大きく囲んだ)ときや、帯が横切っただけのときは、スライド全体
+      // スライド: 点の一部だけを囲んだときは、その点だけを選び、ふつうのノーツと一緒に動かせる(途中の点だけを囲んだ場合は、必ず点だけ。始点/終点を囲んでいても、スライドの半分未満なら点だけ)。半分以上を囲んだ(大きく囲んだ)ときや、帯が横切っただけのときは、スライド全体
       const bT=bY(Math.min(y0,y1)),bB=bY(Math.max(y0,y1)),gN=[],gP=[];
       for(const n of C.notes){if(!noteInRect(n,x0,x1,y0,y1))continue;
         if(isPts(n)&&n.points.length>=2){const ins=n.points.filter(p=>ptInRect(p,x0,x1,y0,y1)),f=n.points[0].beat,l=n.points[n.points.length-1].beat,cover=l>f?Math.max(0,Math.min(l,bT)-Math.max(f,bB))/(l-f):1;
-          if(ins.length&&ins.length<n.points.length&&cover<.5)ins.forEach(p=>gP.push({n,p}));else gN.push(n)}else gN.push(n)}
+          const hasEdge=ins.includes(n.points[0])||ins.includes(n.points[n.points.length-1]); // 始点か終点を囲んでいるか
+          if(ins.length&&ins.length<n.points.length&&(!hasEdge||cover<.5))ins.forEach(p=>gP.push({n,p}));else gN.push(n)}else gN.push(n)}
       if(r.add)setMix([...new Set([...wholeNotes(),...gN])],[...ps,...gP.filter(z=>!ps.some(q=>q.p===z.p))]);else setMix(gN,gP);
       const gotE=MK.filter(m=>m.x-2<x1&&m.x+m.w+2>x0&&m.y-11<y1&&m.y+3>y0).map(m=>({kind:m.kind,arr:m.arr,obj:m.obj}));
       evs=r.add?[...evs,...gotE.filter(m=>!evs.some(z=>z.obj===m.obj))]:gotE;selEv=evs[0]||null;
